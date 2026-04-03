@@ -1,0 +1,100 @@
+# Pharmacy Intelligence Mainframe — Docker Compose
+# Full stack: FastAPI + PostgreSQL + Redis + Nginx
+#
+# Usage:
+#   docker-compose up -d          # Start all services
+#   docker-compose logs -f api    # Tail API logs
+#   docker-compose exec api python -m scripts.seed_db
+
+version: "3.9"
+
+services:
+
+  # ─── PostgreSQL Database ───────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: pharmacy_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pharmacy_mainframe
+      POSTGRES_USER: pharmacy_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-pharmacy_pass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pharmacy_user -d pharmacy_mainframe"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis Cache ───────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: pharmacy_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_pass}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ─── FastAPI Application ───────────────────────────────────────────────────
+  api:
+    build:
+      context: ./backend
+      dockerfile: ../docker/Dockerfile.api
+    container_name: pharmacy_api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://pharmacy_user:${DB_PASSWORD:-pharmacy_pass}@db:5432/pharmacy_mainframe
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_pass}@redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production-32chars}
+      DEBUG: ${DEBUG:-false}
+      NAFDAC_API_KEY: ${NAFDAC_API_KEY:-}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      CORS_ORIGINS: '["http://localhost:3000","https://healthbridge.ng"]'
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    command: >
+      sh -c "
+        alembic upgrade head &&
+        python -m scripts.seed_db &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      "
+
+  # ─── Nginx Reverse Proxy ───────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: pharmacy_nginx
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+      - ./frontend/dist:/usr/share/nginx/html:ro
+
+volumes:
+  postgres_data:
+  redis_data:

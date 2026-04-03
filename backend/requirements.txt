@@ -1,0 +1,42 @@
+# Pharmacy Intelligence Mainframe — Python Dependencies
+# Install: pip install -r requirements.txt
+
+# Web Framework
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+
+# Database
+sqlalchemy==2.0.30
+psycopg2-binary==2.9.9
+alembic==1.13.1          # Database migrations
+
+# Configuration
+pydantic==2.7.1
+pydantic-settings==2.3.0
+
+# HTTP Client (FX rates, NAFDAC API, WhatsApp)
+httpx==0.27.0
+
+# Background Scheduler
+apscheduler==3.10.4
+
+# Caching (Redis optional)
+redis==5.0.4
+
+# Security
+python-jose[cryptography]==3.3.0   # JWT tokens
+passlib[bcrypt]==1.7.4             # Password hashing
+
+# Anthropic Claude SDK — FX Volatility Oracle
+anthropic>=0.28.0
+
+# QR Code generation (Mainframe Verified receipts)
+qrcode[pil]==7.4.2
+
+# Testing
+pytest==8.2.1
+pytest-asyncio==0.23.7
+httpx==0.27.0             # For TestClient
+
+# Dev tools
+python-dotenv==1.0.1
