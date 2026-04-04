@@ -16,66 +16,7 @@ logger = logging.getLogger(__name__)
 
 # Local verified registry — populated from NAFDAC database sync
 # In production this is backed by the nafdac_verifications table
-LOCAL_REGISTRY: Dict[str, Dict] = {
-    "GS-2024-0891": {
-        "drug": "Artemether 80mg/Lumefantrine 480mg",
-        "manufacturer": "Novartis AG Switzerland",
-        "nafdac_reg": "A7-0023-2021",
-        "status": NAFDACStatus.verified,
-        "expiry": "2025-12-15",
-        "registered": "2021-03-10",
-    },
-    "GS-2024-1192": {
-        "drug": "Paracetamol 500mg Tablet",
-        "manufacturer": "May & Baker Nigeria Plc",
-        "nafdac_reg": "A5-1192-2020",
-        "status": NAFDACStatus.verified,
-        "expiry": "2026-08-20",
-        "registered": "2020-11-22",
-    },
-    "RX-2024-3311": {
-        "drug": "Amoxicillin Trihydrate 500mg Capsule",
-        "manufacturer": "Emzor Pharmaceutical Industries",
-        "nafdac_reg": "A1-3311-2022",
-        "status": NAFDACStatus.verified,
-        "expiry": "2026-05-10",
-        "registered": "2022-01-15",
-    },
-    "GF-2024-8812": {
-        "drug": "Metformin Hydrochloride 500mg Tablet",
-        "manufacturer": "Fidson Healthcare Plc",
-        "nafdac_reg": "A3-8812-2021",
-        "status": NAFDACStatus.verified,
-        "expiry": "2026-11-30",
-        "registered": "2021-07-08",
-    },
-    "NV-2024-4421": {
-        "drug": "Amlodipine Besilate 10mg Tablet",
-        "manufacturer": "Pfizer Inc",
-        "nafdac_reg": "A2-4421-2023",
-        "status": NAFDACStatus.verified,
-        "expiry": "2026-02-28",
-        "registered": "2023-02-01",
-    },
-    "PT-2024-9921": {
-        "drug": "Ascorbic Acid (Vitamin C) 1000mg Effervescent",
-        "manufacturer": "Pharmanord Denmark",
-        "nafdac_reg": "S3-9921-2022",
-        "status": NAFDACStatus.flagged,  # High-dose flagged for ACT interaction
-        "expiry": "2025-09-15",
-        "registered": "2022-06-14",
-        "flag_reason": "High-dose formulation — clinical interaction with ACTs",
-    },
-    "COUNTERFEIT-0001": {
-        "drug": "UNREGISTERED PARACETAMOL",
-        "manufacturer": "UNKNOWN",
-        "nafdac_reg": "NONE",
-        "status": NAFDACStatus.counterfeit,
-        "expiry": "N/A",
-        "registered": "N/A",
-        "flag_reason": "Confirmed counterfeit. Seized batch. Report to NAFDAC hotline: 0800-NAFDAC1",
-    },
-}
+LOCAL_REGISTRY: Dict[str, Dict] = {}
 
 
 class NAFDACService:

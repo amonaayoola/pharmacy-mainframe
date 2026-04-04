@@ -146,6 +146,7 @@ def dispense_basket(request: DispenseRequest, db: Session = Depends(get_db)):
         db.add(tx)
 
         # Basket line item
+        margin_pct = engine.margin * 100
         bi = BasketItem(
             dispensing_id=record.id,
             drug_id=drug.id,
@@ -153,7 +154,7 @@ def dispense_basket(request: DispenseRequest, db: Session = Depends(get_db)):
             quantity=item.quantity,
             unit_price_ngn=unit_price,
             total_ngn=line_total,
-            margin_pct=Decimal(str(25.0)),
+            margin_pct=Decimal(str(margin_pct)),
         )
         db.add(bi)
 

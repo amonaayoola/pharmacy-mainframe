@@ -1,8 +1,7 @@
 """whatsapp.py"""
-from fastapi import APIRouter, Request, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Request, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import Optional
 from app.core.database import get_db
 from app.services.whatsapp_service import whatsapp_service
 from app.models.models import Patient, WhatsAppMessage
@@ -41,7 +40,7 @@ async def send_refill_reminder(req: RefillReminderRequest, db: Session = Depends
         patient.full_name, patient.phone_number, req.drug_name, req.days_left, req.price_ngn)
 
 @router.post("/webhook")
-async def webhook(request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+async def webhook(request: Request, db: Session = Depends(get_db)):
     try:
         data = await request.json()
         messages = data.get("entry",[{}])[0].get("changes",[{}])[0].get("value",{}).get("messages",[])
@@ -59,7 +58,9 @@ async def webhook(request: Request, background_tasks: BackgroundTasks, db: Sessi
 
 @router.get("/webhook")
 async def verify_webhook(request: Request):
+    from app.core.config import settings
     params = dict(request.query_params)
-    if params.get("hub.verify_token") == "mainframe_verify_token":
-        return int(params.get("hub.challenge", 0))
-    raise HTTPException(403, "Invalid verify token")
+    verify_token = getattr(settings, 'WHATSAPP_VERIFY_TOKEN', None)
+    if not verify_token or params.get("hub.verify_token") != verify_token:
+        raise HTTPException(403, "Invalid verify token")
+    return int(params.get("hub.challenge", 0))

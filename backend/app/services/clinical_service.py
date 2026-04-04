@@ -208,11 +208,11 @@ class ClinicalGateway:
         Check a new drug against a patient's existing medication profile.
         Used when adding a new prescription for a chronic patient.
         """
-        mock_basket = [
+        basket = [
             {"drug_id": 0, "tags": new_drug_tags, "name": "New Drug"},
             {"drug_id": -1, "tags": existing_drug_tags, "name": "Existing Medication"},
         ]
-        return self.audit_basket(mock_basket)
+        return self.audit_basket(basket)
 
 
 # Singleton instance
