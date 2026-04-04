@@ -1,12 +1,15 @@
-"""procurement.py"""
+"""procurement.py — Phase 1C: auto-generated PO listing added"""
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import date, timedelta, datetime
+
 from app.core.database import get_db
 from app.models.models import PurchaseOrder, ProcurementLine, Wholesaler, POStatus
 from app.services.fx_service import get_cached_fx_rate
+from app.services.inventory_service import list_auto_generated_pos
 
 router = APIRouter()
 
@@ -85,3 +88,25 @@ def approve_po(po_id: int, db: Session = Depends(get_db)):
 @router.get("/wholesalers")
 def list_wholesalers(db: Session = Depends(get_db)):
     return db.query(Wholesaler).filter(Wholesaler.is_active == True).all()
+
+
+# ── Phase 1C: Smart Inventory System ─────────────────────────────────────────
+
+@router.get("/auto-generated")
+def list_auto_generated(limit: int = 50, db: Session = Depends(get_db)):
+    """
+    List all PurchaseOrders auto-created by the Inventory Intelligence engine
+    (auto_generated=True), newest first.
+
+    Each PO is returned with its full procurement lines expanded (drug name,
+    quantity ordered, unit cost, line total). Use the standard
+    PATCH /{po_id}/approve endpoint to approve any draft auto-PO for dispatch.
+
+    Query params:
+      limit — maximum number of POs to return (default 50, max recommended 200)
+    """
+    pos = list_auto_generated_pos(db, limit=min(limit, 200))
+    return {
+        "count":          len(pos),
+        "purchase_orders": pos,
+    }
