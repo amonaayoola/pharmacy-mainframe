@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from app.core.config import settings
 from app.core.database import Base
 from app.models import models  # noqa: ensure all models are imported
+from app.models import transaction  # noqa: Phase 2 POS models
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
