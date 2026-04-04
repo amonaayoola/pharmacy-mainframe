@@ -11,7 +11,7 @@ import time
 
 from app.api import (
     drugs, patients, inventory, procurement,
-    pricing, nafdac, dispensing, whatsapp, dashboard, pos
+    pricing, nafdac, dispensing, whatsapp, dashboard, pos, vendors
 )
 from app.core.config import settings
 from app.core.database import engine, Base
@@ -59,6 +59,7 @@ app.include_router(nafdac.router, prefix="/api/nafdac", tags=["NAFDAC"])
 app.include_router(dispensing.router, prefix="/api/dispense", tags=["Dispensing"])
 app.include_router(whatsapp.router, prefix="/api/whatsapp", tags=["WhatsApp"])
 app.include_router(pos.router, prefix="/api/pos", tags=["POS"])
+app.include_router(vendors.router, prefix="/api/vendors", tags=["Vendors"])
 
 @app.on_event("startup")
 async def startup_event():

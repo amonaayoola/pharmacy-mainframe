@@ -35,9 +35,12 @@ class StockStatus(str, enum.Enum):
 class POStatus(str, enum.Enum):
     draft = "draft"
     approved = "approved"
-    sent = "sent"
+    ordered = "ordered"
     received = "received"
+    paid = "paid"
     cancelled = "cancelled"
+    # legacy alias kept for backward compat
+    sent = "sent"
 
 class TransactionType(str, enum.Enum):
     sale = "sale"
@@ -246,7 +249,17 @@ class PurchaseOrder(Base):
     approved_at = Column(DateTime(timezone=True))
     sent_at = Column(DateTime(timezone=True))
 
+    # Phase 3 additions
+    vendor_id = Column(Integer, ForeignKey("vendors.id"), nullable=True)
+    approved_by = Column(String(100))
+    dispatched_at = Column(DateTime(timezone=True))
+    received_at = Column(DateTime(timezone=True))
+    paid_at = Column(DateTime(timezone=True))
+    budget_override = Column(Boolean, default=False)  # admin override flag
+    override_reason = Column(Text)
+
     wholesaler = relationship("Wholesaler", back_populates="purchase_orders")
+    vendor = relationship("Vendor", back_populates="purchase_orders")
     lines = relationship("ProcurementLine", back_populates="purchase_order")
 
 
@@ -256,13 +269,17 @@ class ProcurementLine(Base):
     id = Column(Integer, primary_key=True, index=True)
     po_id = Column(Integer, ForeignKey("purchase_orders.id"), nullable=False)
     drug_id = Column(Integer, ForeignKey("drugs.id"), nullable=False)
+    vendor_id = Column(Integer, ForeignKey("vendors.id"), nullable=True)  # Phase 3
     quantity_ordered = Column(Integer, nullable=False)
     quantity_received = Column(Integer, default=0)
     unit_cost_usd = Column(Numeric(10, 4))
+    unit_cost_ngn = Column(Numeric(12, 2))   # Phase 3: NGN at PO creation time
     total_usd = Column(Numeric(12, 2))
+    total_ngn = Column(Numeric(14, 2))       # Phase 3
 
     purchase_order = relationship("PurchaseOrder", back_populates="lines")
     drug = relationship("Drug", back_populates="procurement_lines")
+    vendor = relationship("Vendor")
 
 
 # ─────────────────────────────────────────────
@@ -330,3 +347,63 @@ class NAFDACVerification(Base):
     response_data = Column(JSON)               # Full API response stored
     verified_by = Column(String(100))
     verified_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+# ─────────────────────────────────────────────
+# PHASE 3 — AUTO-PROCUREMENT INTELLIGENCE
+# ─────────────────────────────────────────────
+
+class Vendor(Base):
+    """
+    Drug vendor / supplier (replaces / extends Wholesaler for Phase 3).
+    A Vendor can be linked to multiple drugs with specific pricing.
+    """
+    __tablename__ = "vendors"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False, index=True)
+    contact_person = Column(String(200))
+    phone = Column(String(30))
+    email = Column(String(200))
+    address = Column(Text)
+    lead_time_days = Column(Integer, default=3)
+    performance_score = Column(Numeric(3, 1), default=5.0)   # 0–10
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    drug_prices = relationship("VendorDrugPrice", back_populates="vendor")
+    purchase_orders = relationship("PurchaseOrder", back_populates="vendor")
+
+
+class VendorDrugPrice(Base):
+    """Per-vendor unit pricing for each drug, stored in both USD and NGN."""
+    __tablename__ = "vendor_drug_prices"
+
+    id = Column(Integer, primary_key=True, index=True)
+    vendor_id = Column(Integer, ForeignKey("vendors.id"), nullable=False)
+    drug_id = Column(Integer, ForeignKey("drugs.id"), nullable=False)
+    unit_price_ngn = Column(Numeric(12, 2), nullable=False)
+    unit_price_usd = Column(Numeric(10, 4))   # optional — populated at creation
+    last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    vendor = relationship("Vendor", back_populates="drug_prices")
+    drug = relationship("Drug")
+
+
+class ProcurementBudget(Base):
+    """
+    Monthly procurement budget per drug category.
+    Tracks budget ceiling and running spend so the rules engine can
+    block or flag PO approvals that would exceed the monthly limit.
+    """
+    __tablename__ = "procurement_budgets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    category = Column(String(100), nullable=False, index=True)   # drug_class value
+    year = Column(Integer, nullable=False)
+    month = Column(Integer, nullable=False)                       # 1–12
+    monthly_budget_ngn = Column(Numeric(14, 2), nullable=False)
+    spent_ngn = Column(Numeric(14, 2), default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
