@@ -237,7 +237,8 @@ class PurchaseOrder(Base):
     __tablename__ = "purchase_orders"
 
     id = Column(Integer, primary_key=True, index=True)
-    wholesaler_id = Column(Integer, ForeignKey("wholesalers.id"), nullable=False)
+    po_number = Column(String(50), unique=True, index=True)     # e.g. PO-2026-0001
+    wholesaler_id = Column(Integer, ForeignKey("wholesalers.id"), nullable=True)  # nullable for vendor-only POs (Phase 3)
     status = Column(Enum(POStatus), default=POStatus.draft)
     total_usd = Column(Numeric(12, 2))
     total_ngn = Column(Numeric(12, 2))
@@ -245,9 +246,11 @@ class PurchaseOrder(Base):
     expected_delivery = Column(Date)
     auto_generated = Column(Boolean, default=False)  # True = created by Mainframe
     notes = Column(Text)
+    created_by = Column(String(100))                 # Phase 3C: who created the PO
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     approved_at = Column(DateTime(timezone=True))
     sent_at = Column(DateTime(timezone=True))
+    sent_date = Column(Date)                         # Phase 3C: date sent to vendor
 
     # Phase 3 additions
     vendor_id = Column(Integer, ForeignKey("vendors.id"), nullable=True)
@@ -261,6 +264,9 @@ class PurchaseOrder(Base):
     wholesaler = relationship("Wholesaler", back_populates="purchase_orders")
     vendor = relationship("Vendor", back_populates="purchase_orders")
     lines = relationship("ProcurementLine", back_populates="purchase_order")
+    # Phase 3C
+    approvals = relationship("POApproval", back_populates="purchase_order", cascade="all, delete-orphan")
+    tracking_events = relationship("POTracking", back_populates="purchase_order", cascade="all, delete-orphan")
 
 
 class ProcurementLine(Base):
@@ -374,6 +380,10 @@ class Vendor(Base):
 
     drug_prices = relationship("VendorDrugPrice", back_populates="vendor")
     purchase_orders = relationship("PurchaseOrder", back_populates="vendor")
+    # Phase 3A extended relationships (defined in procurement_models.py)
+    categories = relationship("VendorCategory", back_populates="vendor", cascade="all, delete-orphan")
+    performance = relationship("VendorPerformance", back_populates="vendor", uselist=False, cascade="all, delete-orphan")
+    vendor_relationship = relationship("VendorRelationship", back_populates="vendor", uselist=False, cascade="all, delete-orphan")
 
 
 class VendorDrugPrice(Base):

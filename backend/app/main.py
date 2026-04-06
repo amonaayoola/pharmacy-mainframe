@@ -16,6 +16,8 @@ from app.api import (
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.scheduler import start_scheduler
+# Ensure all extended models are registered with SQLAlchemy metadata
+import app.models.procurement_models  # noqa: F401
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
