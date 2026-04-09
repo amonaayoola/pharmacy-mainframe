@@ -17,6 +17,7 @@ from fastapi import HTTPException
 from app.models.models import StockBatch, StockTransaction, TransactionType, Drug
 from app.models.transaction import SaleTransaction, SaleTransactionItem, TransactionStatus
 from app.services.fx_service import get_cached_fx_rate
+from app.services.clinical_service import check_patient_allergies
 
 VOID_WINDOW_SECONDS = 120  # 2-minute hard lock
 
@@ -45,6 +46,25 @@ def create_sale_transaction(
     """
     if not items:
         raise HTTPException(status_code=400, detail="Transaction must contain at least one item.")
+
+    # ── Allergy Hard Block (Phase 4) ────────────────────────────────────
+    # Run BEFORE any stock deduction or DB writes.
+    # Walk-in transactions (patient_id=None) skip this check.
+    if patient_id is not None:
+        drug_ids_in_basket = [item["drug_id"] for item in items]
+        conflicts = check_patient_allergies(patient_id, drug_ids_in_basket, db)
+        if conflicts:
+            first = conflicts[0]
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "blocked":  True,
+                    "reason":   "patient_allergy",
+                    "allergen": first["allergen"],
+                    "drug":     first["drug_name"],
+                    "all_conflicts": conflicts,
+                },
+            )
 
     fx_rate = Decimal(str(get_cached_fx_rate()))
     total_ngn = Decimal("0")

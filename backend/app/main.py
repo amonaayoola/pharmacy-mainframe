@@ -11,13 +11,15 @@ import time
 
 from app.api import (
     drugs, patients, inventory, procurement,
-    pricing, nafdac, dispensing, whatsapp, dashboard, pos, vendors
+    pricing, nafdac, dispensing, whatsapp, dashboard, pos, vendors,
+    portal, portal_auth,
 )
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.scheduler import start_scheduler
 # Ensure all extended models are registered with SQLAlchemy metadata
 import app.models.procurement_models  # noqa: F401
+import app.models.portal_models       # noqa: F401
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -62,6 +64,8 @@ app.include_router(dispensing.router, prefix="/api/dispense", tags=["Dispensing"
 app.include_router(whatsapp.router, prefix="/api/whatsapp", tags=["WhatsApp"])
 app.include_router(pos.router, prefix="/api/pos", tags=["POS"])
 app.include_router(vendors.router, prefix="/api/vendors", tags=["Vendors"])
+app.include_router(portal_auth.router, prefix="/api/portal/auth", tags=["Patient Portal Auth"])
+app.include_router(portal.router, prefix="/api/portal", tags=["Patient Portal"])
 
 @app.on_event("startup")
 async def startup_event():

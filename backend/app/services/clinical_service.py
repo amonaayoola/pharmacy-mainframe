@@ -217,3 +217,68 @@ class ClinicalGateway:
 
 # Singleton instance
 clinical_gateway = ClinicalGateway()
+
+
+# ─────────────────────────────────────────────
+# PATIENT ALLERGY HARD BLOCK (Phase 4)
+# ─────────────────────────────────────────────
+
+def check_patient_allergies(patient_id: int, drug_ids: List[int], db) -> List[Dict]:
+    """
+    Query patient_allergies for patient_id and cross-reference against drug
+    ingredient tags and generic names.
+
+    Returns a list of conflict dicts:
+      [{"allergen": str, "drug_id": int, "drug_name": str}, ...]
+
+    Empty list = no conflicts.
+    """
+    from app.models.portal_models import PatientAllergy
+    from app.models.models import Drug
+
+    allergies = (
+        db.query(PatientAllergy)
+        .filter(PatientAllergy.patient_id == patient_id)
+        .all()
+    )
+
+    if not allergies:
+        return []
+
+    # Normalise allergen strings for case-insensitive matching
+    allergen_map = {a.allergen.strip().lower(): a.allergen for a in allergies}
+
+    conflicts = []
+    for drug_id in drug_ids:
+        drug = db.query(Drug).filter(Drug.id == drug_id).first()
+        if not drug:
+            continue
+
+        # Build a set of searchable strings for this drug:
+        # tags, generic_name, brand_name, drug_class
+        drug_terms = set()
+        if drug.tags:
+            for tag in drug.tags:
+                drug_terms.add(tag.strip().lower())
+        if drug.generic_name:
+            drug_terms.add(drug.generic_name.strip().lower())
+        if drug.brand_name:
+            drug_terms.add(drug.brand_name.strip().lower())
+        if drug.drug_class:
+            drug_terms.add(drug.drug_class.strip().lower())
+
+        for normalised_allergen, original_allergen in allergen_map.items():
+            # Match if the allergen string appears in any drug term (substring match)
+            matched = any(
+                normalised_allergen in term or term in normalised_allergen
+                for term in drug_terms
+            )
+            if matched:
+                conflicts.append({
+                    "allergen":  original_allergen,
+                    "drug_id":   drug.id,
+                    "drug_name": drug.generic_name,
+                })
+                break  # One conflict per drug is enough
+
+    return conflicts
