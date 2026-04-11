@@ -1,0 +1,21 @@
+{
+  "name": "HealthBridge Patient",
+  "short_name": "HealthBridge",
+  "description": "Patient care portal for Lagos-area pharmacies",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0EA5E9",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

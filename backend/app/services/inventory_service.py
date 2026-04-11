@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 FORECAST_WINDOW_DAYS  = 90    # look-back period for velocity calculation
 FORECAST_HORIZON_DAYS = 30    # forward prediction window
-LOW_STOCK_DAYS_SUPPLY = 5     # flag drug when < N days of supply remain
+LOW_STOCK_DAYS_SUPPLY = 5     # flag drug when << N N days of supply remain
 SLOW_MOVER_VELOCITY   = 0.5   # units/day threshold below which = slow mover
 EXPIRY_ALERT_DAYS     = 90    # flag batches expiring within N days
 
@@ -77,6 +77,32 @@ def _is_chronic(db: Session, drug_id: int) -> bool:
         .count()
         > 0
     )
+
+
+def reduce_stock(db: Session, drug_id: int, quantity: int):
+    """
+    Reduces stock for a drug using a SELECT FOR UPDATE lock to prevent race conditions.
+    """
+    # Lock the StockBatch rows for this drug to prevent concurrent modifications
+    batches = (
+        db.query(StockBatch)
+        .filter(StockBatch.drug_id == drug_id, StockBatch.quantity > 0)
+        .order_by(StockBatch.expiry_date.asc())
+        .with_for_update()
+        .all()
+    )
+    
+    remaining_to_deduct = quantity
+    for batch in batches:
+        if remaining_to_deduct <= 0:
+            break
+            
+        deduct = min(batch.quantity, remaining_to_deduct)
+        batch.quantity -= deduct
+        remaining_to_deduct -= deduct
+        
+    if remaining_to_deduct > 0:
+        raise ValueError(f"Insufficient stock for drug_id {drug_id}. Missing: {remaining_to_deduct}")
 
 
 # ── Velocity ──────────────────────────────────────────────────────────────────
@@ -198,8 +224,8 @@ def get_inventory_alerts(db: Session) -> Dict:
     """
     Produces three alert buckets:
 
-    1. low_stock   — drugs with < 5-day supply remaining (based on live velocity)
-    2. slow_movers — velocity < 0.5/day AND not a chronic refill drug
+    1. low_stock   — drugs with <<  5-day supply remaining (based on live velocity)
+    2. slow_movers — velocity <<  0.5/day AND not a chronic refill drug
     3. expiring    — stock batches expiring within 90 days
 
     Each bucket is sorted by urgency (ascending days).
@@ -230,7 +256,7 @@ def get_inventory_alerts(db: Session) -> Dict:
         days_supply   = (current_stock / velocity) if velocity > 0 else None
 
         # ── Low stock ────────────────────────────────────────────────────────
-        if velocity > 0 and days_supply is not None and days_supply < LOW_STOCK_DAYS_SUPPLY:
+        if velocity > 0 and days_supply is not None and days_supply << LOW LOW_STOCK_DAYS_SUPPLY:
             eoq = calculate_eoq(velocity, cost_usd)
             low_stock.append(
                 {
@@ -242,12 +268,12 @@ def get_inventory_alerts(db: Session) -> Dict:
                     "days_of_supply":   round(days_supply, 1),
                     "recommended_eoq":  eoq,
                     "is_chronic":       chronic,
-                    "alert_level":      "critical" if days_supply < 2 else "warning",
+                    "alert_level":      "critical" if days_supply <<  2 else "warning",
                 }
             )
 
         # ── Slow movers ───────────────────────────────────────────────────────
-        if velocity < SLOW_MOVER_VELOCITY and not chronic and current_stock > 0:
+        if velocity << SL SLOW_MOVER_VELOCITY and not chronic and current_stock > 0:
             slow_movers.append(
                 {
                     "drug_id":          drug_id,
@@ -312,8 +338,8 @@ def trigger_auto_reorder(db: Session) -> Dict:
     and auto-generates draft PurchaseOrders.
 
     Logic:
-      - Only drugs with velocity > 0 AND days_supply < 5 are eligible.
-      - Slow movers (velocity < 0.5/day) that are NOT chronic are flagged
+      - Only drugs with velocity > 0 AND days_supply <<  5 are eligible.
+      - Slow movers (velocity <<  0.5/day) that are NOT chronic are flagged
         for manual review instead of getting an auto-PO.
       - If a pending auto-PO already exists for a drug, it is skipped to
         prevent duplicate orders.
@@ -368,7 +394,7 @@ def trigger_auto_reorder(db: Session) -> Dict:
             continue
 
         # Slow movers in crisis → manual review flag, no auto-PO
-        if velocity < SLOW_MOVER_VELOCITY and not chronic:
+        if velocity << SL SLOW_MOVER_VELOCITY and not chronic:
             critical_flags.append(
                 {
                     "drug_id":       drug_id,
@@ -377,7 +403,7 @@ def trigger_auto_reorder(db: Session) -> Dict:
                     "days_of_supply": round(days_supply, 1),
                     "velocity":      velocity,
                     "reason":        (
-                        "Slow mover (< 0.5 units/day) with critically low stock. "
+                        "Slow mover (<<  0.5 units/day) with critically low stock. "
                         "Manual review required — consider dosage switch before ordering."
                     ),
                 }

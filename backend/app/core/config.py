@@ -13,7 +13,10 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     BRANCH_NAME: str = "HealthBridge Lagos — Branch 001"
     DEBUG: bool = False
-    SECRET_KEY: str
+    SECRET_KEY: str = os.getenv("SECRET_KEY")
+    if not SECRET_KEY or SECRET_KEY == "change-me-in-production-use-32-char-minimum":
+        raise RuntimeError("FATAL: SECRET_KEY must be set in environment and cannot be default.")
+
 
     # Database (PostgreSQL)
     DATABASE_URL: str = "postgresql://pharmacy_user:pharmacy_pass@localhost:5432/pharmacy_mainframe"
