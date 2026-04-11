@@ -76,6 +76,7 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("🛑 Pharmacy Mainframe shutting down...")
+    engine.dispose()
 
 @app.get("/api/health")
 async def health_check():

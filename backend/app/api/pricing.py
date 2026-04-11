@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
 from app.core.database import get_db
+from app.core.auth import require_admin
 from app.models.models import Drug, FXRate, FXAlert
 from app.services.fx_service import PricingEngine, get_cached_fx_rate, fetch_live_fx_rate, set_manual_fx_rate
 
@@ -42,7 +43,7 @@ async def get_fx_rate():
     return {"usd_ngn": rate, "source": "AbokiFX"}
 
 @router.post("/fx-rate/manual")
-def set_fx_rate(rate: float):
+def set_fx_rate(rate: float, current_user: dict = Depends(require_admin)):
     set_manual_fx_rate(rate)
     return {"message": f"FX rate manually set to {rate:,.2f}", "usd_ngn": rate}
 

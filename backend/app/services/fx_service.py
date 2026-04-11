@@ -24,7 +24,7 @@ async def fetch_live_fx_rate() -> float:
     """
     # Check in-memory cache (< 6 hours old)
     if _fx_cache["rate"] and _fx_cache["updated_at"]:
-        age_hours = (datetime.utcnow() - _fx_cache["updated_at"]).seconds / 3600
+        age_hours = (datetime.utcnow() - _fx_cache["updated_at"]).total_seconds() / 3600
         if age_hours < settings.FX_UPDATE_INTERVAL_HOURS:
             return _fx_cache["rate"]
 

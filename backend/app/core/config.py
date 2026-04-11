@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     BRANCH_NAME: str = "HealthBridge Lagos — Branch 001"
     DEBUG: bool = False
-    SECRET_KEY: str = "change-me-in-production-use-32-char-minimum"
+    SECRET_KEY: str
 
     # Database (PostgreSQL)
     DATABASE_URL: str = "postgresql://pharmacy_user:pharmacy_pass@localhost:5432/pharmacy_mainframe"

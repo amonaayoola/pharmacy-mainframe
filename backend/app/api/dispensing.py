@@ -13,6 +13,7 @@ from datetime import datetime
 import uuid
 
 from app.core.database import get_db
+from app.core.auth import get_current_user
 from app.services.clinical_service import clinical_gateway
 from app.services.fx_service import PricingEngine, get_cached_fx_rate
 from app.models.models import (
@@ -47,7 +48,7 @@ class DispenseResponse(BaseModel):
 router = APIRouter()
 
 @router.post("/", response_model=DispenseResponse)
-def dispense_basket(request: DispenseRequest, db: Session = Depends(get_db)):
+def dispense_basket(request: DispenseRequest, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     Core dispensing endpoint.
     1. Audit basket for clinical interactions
@@ -175,7 +176,7 @@ def dispense_basket(request: DispenseRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/audit")
-def audit_basket_only(request: DispenseRequest, db: Session = Depends(get_db)):
+def audit_basket_only(request: DispenseRequest, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Pre-flight audit without completing the sale."""
     basket_drugs = []
     for item in request.items:

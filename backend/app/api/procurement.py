@@ -275,6 +275,11 @@ def submit_po(po_id: int, body: SubmitRequest, db: Session = Depends(get_db)):
 def approve_purchase_order(po_id: int, body: ApproveRequest, db: Session = Depends(get_db)):
     """Approve a PO. Runs budget checks per drug category."""
     try:
+        if body.budget_override and body.approved_by not in ("admin", "pharmacist_in_charge"):
+            raise HTTPException(
+                status_code=403,
+                detail="Only admin or pharmacist_in_charge can override budget"
+            )
         result = approve_po(
             db, po_id,
             approved_by=body.approved_by,

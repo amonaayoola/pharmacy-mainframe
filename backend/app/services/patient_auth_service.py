@@ -29,7 +29,6 @@ logger = logging.getLogger(__name__)
 
 OTP_EXPIRY_MINUTES = 10
 JWT_ALGORITHM      = "HS256"
-JWT_EXPIRY_DAYS    = 30
 
 _bearer = HTTPBearer()
 
@@ -52,7 +51,7 @@ def _issue_jwt(patient_id: int) -> str:
     payload = {
         "sub":      str(patient_id),
         "type":     "patient_portal",
-        "exp":      datetime.now(timezone.utc) + timedelta(days=JWT_EXPIRY_DAYS),
+        "exp":      datetime.now(timezone.utc) + timedelta(hours=24),
         "iat":      datetime.now(timezone.utc),
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=JWT_ALGORITHM)
@@ -71,6 +70,22 @@ def send_otp(phone_number: str, db: Session) -> dict:
     """
     # Normalise phone: strip whitespace
     phone_number = phone_number.strip()
+
+    # Rate limit: check OTP requests in last 10 minutes
+    ten_min_ago = datetime.now(timezone.utc) - timedelta(minutes=10)
+    recent_count = (
+        db.query(PatientSession)
+        .filter(
+            PatientSession.phone_number == phone_number,
+            PatientSession.created_at >= ten_min_ago,
+        )
+        .count()
+    )
+    if recent_count >= 3:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many OTP requests. Try again in 10 minutes."
+        )
 
     # Look up the patient — phone_number is the WhatsApp identifier
     patient = (

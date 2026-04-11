@@ -1,10 +1,11 @@
 """patients.py"""
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import date, timedelta
 from app.core.database import get_db
+from app.core.auth import get_current_user
 from app.models.models import Patient, RefillSchedule, Drug
 
 router = APIRouter()
@@ -28,12 +29,12 @@ class RefillScheduleCreate(BaseModel):
     last_refill_date: date
 
 @router.get("/")
-def list_patients(db: Session = Depends(get_db)):
+def list_patients(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     patients = db.query(Patient).filter(Patient.is_active == True).all()
     today = date.today()
     result = []
     for p in patients:
-        schedules = db.query(RefillSchedule).filter(
+        schedules = db.query(RefillSchedule).options(joinedload(RefillSchedule.drug)).filter(
             RefillSchedule.patient_id == p.id,
             RefillSchedule.is_active == True
         ).all()
@@ -58,7 +59,7 @@ def list_patients(db: Session = Depends(get_db)):
     return result
 
 @router.post("/", status_code=201)
-def create_patient(patient_in: PatientCreate, db: Session = Depends(get_db)):
+def create_patient(patient_in: PatientCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     existing = db.query(Patient).filter(Patient.phone_number == patient_in.phone_number).first()
     if existing:
         raise HTTPException(400, f"Patient with phone {patient_in.phone_number} already exists")
@@ -69,7 +70,7 @@ def create_patient(patient_in: PatientCreate, db: Session = Depends(get_db)):
     return {"id": patient.id, "full_name": patient.full_name, "phone_number": patient.phone_number}
 
 @router.post("/refill-schedules", status_code=201)
-def create_refill_schedule(schedule_in: RefillScheduleCreate, db: Session = Depends(get_db)):
+def create_refill_schedule(schedule_in: RefillScheduleCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     next_date = schedule_in.last_refill_date + timedelta(days=schedule_in.cycle_days)
     schedule = RefillSchedule(
         patient_id=schedule_in.patient_id,
@@ -85,11 +86,12 @@ def create_refill_schedule(schedule_in: RefillScheduleCreate, db: Session = Depe
     return {"id": schedule.id, "next_refill_date": next_date}
 
 @router.get("/due-refills")
-def get_due_refills(days: int = 3, db: Session = Depends(get_db)):
+def get_due_refills(days: int = 3, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     today = date.today()
     cutoff = today + timedelta(days=days)
     schedules = (
         db.query(RefillSchedule)
+        .options(joinedload(RefillSchedule.patient), joinedload(RefillSchedule.drug))
         .filter(
             RefillSchedule.is_active == True,
             RefillSchedule.next_refill_date <= cutoff,
