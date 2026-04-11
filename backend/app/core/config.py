@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     TWILIO_ACCOUNT_SID: str = ""
     TWILIO_AUTH_TOKEN: str = ""
     TWILIO_WHATSAPP_FROM: str = "whatsapp:+14155238886"
+    WHATSAPP_VERIFY_TOKEN: str = ""
 
     # Pharmacy
     DEFAULT_MARGIN: float = 0.25         # 25% margin target
