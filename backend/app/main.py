@@ -12,7 +12,7 @@ import time
 from app.api import (
     drugs, patients, inventory, procurement,
     pricing, nafdac, dispensing, whatsapp, dashboard, pos, vendors,
-    portal, portal_auth,
+    portal, portal_auth, feedback,
 )
 from app.core.config import settings
 from app.core.database import engine, Base
@@ -66,6 +66,7 @@ app.include_router(pos.router, prefix="/api/pos", tags=["POS"])
 app.include_router(vendors.router, prefix="/api/vendors", tags=["Vendors"])
 app.include_router(portal_auth.router, prefix="/api/portal/auth", tags=["Patient Portal Auth"])
 app.include_router(portal.router, prefix="/api/portal", tags=["Patient Portal"])
+app.include_router(feedback.router, prefix="/api/feedback", tags=["Feedback"])
 
 @app.on_event("startup")
 async def startup_event():

@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import HealthCardPage from './pages/HealthCardPage'
 import RefillHistoryPage from './pages/RefillHistoryPage'
+import FeedbackWidget from './components/FeedbackWidget'
 
 function ProtectedRoute({ children }) {
   const { token } = useAuth()
@@ -13,34 +14,37 @@ function ProtectedRoute({ children }) {
 
 function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/" element={<LoginPage />} />
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <DashboardPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/health-card"
-        element={
-          <ProtectedRoute>
-            <HealthCardPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/refills"
-        element={
-          <ProtectedRoute>
-            <RefillHistoryPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <FeedbackWidget />
+      <Routes>
+        <Route path="/" element={<LoginPage />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/health-card"
+          element={
+            <ProtectedRoute>
+              <HealthCardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/refills"
+          element={
+            <ProtectedRoute>
+              <RefillHistoryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   )
 }
 
